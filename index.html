@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Item</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f5;
+            flex-direction: column;
+        }
+
+        .container {
+            width: 300px;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 24px;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        input, button {
+            margin-top: 10px;
+            padding: 8px;
+            font-size: 16px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .item-list {
+            width: 300px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .item {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            position: relative;
+        }
+
+        .item:last-child {
+            border-bottom: none;
+        }
+
+        .item p {
+            margin: 5px 0;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: red;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .delete-btn:hover {
+            color: white;
+            background: red;
+            animation-duration: 5ms;
+            transition: all;
+        }
+
+        /* Error message styling */
+        .error-message {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #ff4d4d;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+            z-index: 1000;
+        }
+        .ok-message {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #00ff40;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Add New Item</h1>
+        <form id="addItemForm">
+            <input type="text" id="itemId" name="id" placeholder="Item ID" required>
+            <input type="text" id="itemName" name="name" placeholder="Name">
+            <input type="text" id="itemDescription" name="description" placeholder="Description" required>
+            <input type="number" id="itemPrice" name="price" placeholder="Price" required>
+            <button type="submit">Add Item</button>
+        </form>
+    </div>
+
+    <div class="item-list" id="itemList">
+        <h2>Existing Items</h2>
+        <div id="itemsContainer"></div>
+    </div>
+
+    <!-- Error message container -->
+    <div id="errorMessage" class="error-message"></div>
+    <div id="okMessage" class="ok-message"></div>
+
+    <!-- Düzenleme Formu (PATCH) -->
+    <div id="editItemModal" class="container" style="display:none;">
+        <h1>Edit Item (PATCH)</h1>
+        <form id="editItemForm">
+            <input type="text" id="editItemId" name="id" placeholder="Item ID" readonly>
+            <input type="text" id="editItemName" name="name" placeholder="Name" required>
+            <input type="text" id="editItemDescription" name="description" placeholder="Description" required>
+            <input type="number" id="editItemPrice" name="price" placeholder="Price" required>
+            <button type="submit">Update Item (PATCH)</button>
+        </form>
+        <button onclick="closeEditModal()">Cancel</button>
+    </div>
+
+    <!-- Tam Güncelleme Formu (PUT) -->
+    <div id="putEditItemModal" class="container" style="display:none;">
+        <h1>Edit Item (PUT)</h1>
+        <form id="putEditItemForm">
+            <input type="text" id="putEditItemId" name="id" placeholder="Item ID" readonly>
+            <input type="text" id="putEditItemName" name="name" placeholder="Name" required>
+            <input type="text" id="putEditItemDescription" name="description" placeholder="Description" required>
+            <input type="number" id="putEditItemPrice" name="price" placeholder="Price" required>
+            <button type="submit">Update Item (PUT)</button>
+        </form>
+        <button onclick="closePutEditModal()">Cancel</button>
+    </div>
+
+    <script>
+        // Show error message for a few seconds
+        function showError(message) {
+            const errorMessageDiv = document.getElementById("errorMessage");
+            errorMessageDiv.innerText = message;
+            errorMessageDiv.style.display = "block";
+            setTimeout(() => {
+                errorMessageDiv.style.display = "none";
+            }, 3000);
+        }
+
+        function showOK(message) {
+            const MessageDiv = document.getElementById("okMessage");
+            MessageDiv.innerText = message;
+            MessageDiv.style.display = "block";
+            setTimeout(() => {
+                MessageDiv.style.display = "none";
+            }, 3000);
+        }
+
+        document.getElementById("addItemForm").addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            const token = "token";  
+            const itemData = {
+                id: parseInt(document.getElementById("itemId").value),
+                name: document.getElementById("itemName").value,
+                description: document.getElementById("itemDescription").value,
+                price: document.getElementById("itemPrice").value
+            };
+
+            try {
+                const response = await fetch('http://192.168.5.22:5000/items/1', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(itemData)
+                });
+
+                if (response.status === 201) {
+                    const newItem = await response.json();
+                    showOK(`Item added successfully: ${newItem.name}`);
+                    fetchItems();  
+                } else {
+                    showError('An error occurred.');
+                }
+            } catch (error) {
+                console.error('Error adding item:', error);
+                showError('An error occurred while adding the item.');
+            }
+        });
+
+        async function fetchItems() {
+            const token = "token";  
+
+            try {
+                const response = await fetch('http://192.168.5.22:5000/items', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const items = await response.json();
+                    const itemsContainer = document.getElementById("itemsContainer");
+                    itemsContainer.innerHTML = "";
+
+                    items.forEach(item => {
+                        const itemDiv = document.createElement("div");
+                        itemDiv.className = "item";
+                        itemDiv.innerHTML = `
+                            <p><strong>ID:</strong> ${item.id}</p>
+                            <p><strong>Name:</strong> ${item.name}</p>
+                            <p><strong>Description:</strong> ${item.description}</p>
+                            <p><strong>Price:</strong> $${item.price}</p>
+                            <button class="delete-btn" onclick="deleteItem(${item.id})">X</button>
+                            <button class="edit-btn" onclick="openEditModal(${item.id})">Edit (PATCH)</button>
+                            <button class="edit-btn" onclick="openPutEditModal(${item.id})">Edit (PUT)</button>
+                        `;
+                        itemsContainer.appendChild(itemDiv);
+                    });
+                } else {
+                    console.error('Failed to fetch items');
+                }
+            } catch (error) {
+                console.error('Error fetching items:', error);
+            }
+        }
+
+        async function deleteItem(itemId) {
+            const token = "token";  
+
+            try {
+                const response = await fetch(`http://192.168.5.22:5000/items/${itemId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 204) {
+                    showOK('Item deleted successfully');
+                    fetchItems();  
+                } else {
+                    showError('An error occurred.');
+                }
+            } catch (error) {
+                console.error('Error deleting item:', error);
+                showError('An error occurred while deleting the item.');
+            }
+        }
+
+        // Açılan düzenleme formunu göster (PATCH)
+        function openEditModal(itemId) {
+            const token = "token";  
+
+            fetch(`http://192.168.5.22:5000/items/${itemId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => response.json())
+            .then(item => {
+                document.getElementById("editItemId").value = item.id;
+                document.getElementById("editItemName").value = item.name;
+                document.getElementById("editItemDescription").value = item.description;
+                document.getElementById("editItemPrice").value = item.price;
+                document.getElementById("editItemModal").style.display = "block";
+            })
+            .catch(error => console.error('Error fetching item:', error));
+        }
+
+        // Düzenleme formu kapatma (PATCH)
+        function closeEditModal() {
+            document.getElementById("editItemModal").style.display = "none";
+        }
+
+        // Düzenlemeyi kaydetme (PATCH)
+        document.getElementById("editItemForm").addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            const itemId = document.getElementById("editItemId").value;
+            const updatedData = {
+                name: document.getElementById("editItemName").value,
+                description: document.getElementById("editItemDescription").value,
+                price: document.getElementById("editItemPrice").value
+            };
+
+            const token = "token";  
+
+            try {
+                const response = await fetch(`http://192.168.5.22:5000/items/${itemId}`, {
+                    method: 'PATCH', // veya PUT
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(updatedData)
+                });
+
+                if (response.status === 200) {
+                    showOK('Item updated successfully');
+                    fetchItems();
+                    closeEditModal();
+                } else {
+                    showError('An error occurred.');
+                }
+            } catch (error) {
+                console.error('Error updating item:', error);
+                showError('An error occurred while updating the item.');
+            }
+        });
+
+        // PUT düzenleme formunu göster
+        function openPutEditModal(itemId) {
+            const token = "token";  
+
+            fetch(`http://192.168.5.22:5000/items/${itemId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => response.json())
+            .then(item => {
+                document.getElementById("putEditItemId").value = item.id;
+                document.getElementById("putEditItemName").value = item.name;
+                document.getElementById("putEditItemDescription").value = item.description;
+                document.getElementById("putEditItemPrice").value = item.price;
+                document.getElementById("putEditItemModal").style.display = "block";
+            })
+            .catch(error => console.error('Error fetching item:', error));
+        }
+
+        // PUT düzenlemeyi kaydet
+        document.getElementById("putEditItemForm").addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            const itemId = document.getElementById("putEditItemId").value;
+            const updatedData = {
+                name: document.getElementById("putEditItemName").value,
+                description: document.getElementById("putEditItemDescription").value,
+                price: document.getElementById("putEditItemPrice").value
+            };
+
+            const token = "token";  
+
+            try {
+                const response = await fetch(`http://192.168.5.22:5000/items/${itemId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(updatedData)
+                });
+
+                if (response.status === 200) {
+                    showOK('Item fully updated (PUT)');
+                    fetchItems();
+                    closePutEditModal();
+                } else {
+                    showError('An error occurred.');
+                }
+            } catch (error) {
+                console.error('Error updating item with PUT:', error);
+                showError('An error occurred while updating the item.');
+            }
+        });
+
+        // PUT düzenleme formunu kapatma
+        function closePutEditModal() {
+            document.getElementById("putEditItemModal").style.display = "none";
+        }
+
+        // Sayfa ilk yüklendiğinde mevcut öğeleri getirme
+        fetchItems();
+    </script>
+</body>
+</html>
